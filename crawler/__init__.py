@@ -1,1 +1,0 @@
-"""Persistent sitemap-only crawler."""

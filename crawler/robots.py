@@ -4,8 +4,6 @@ from urllib.robotparser import RobotFileParser
 
 
 class RobotsRules(RobotFileParser):
-    """Use standard delay/sitemap parsing with wildcard and longest-rule matching."""
-
     def parse(self, lines):
         super().parse(lines)
         self.rule_groups = []

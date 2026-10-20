@@ -88,7 +88,6 @@ class Fetcher:
                         if not response.headers.get("location"):
                             raise FetchError("Redirect without Location")
                         url = urljoin(url, response.headers["location"])
-                        # Validators belong to the original representation.
                         headers = None
                         continue
                     if response.status_code == 429 or response.status_code >= 500:

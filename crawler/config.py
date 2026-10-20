@@ -13,7 +13,7 @@ def load_config(path: str) -> dict:
     db = config.get("db", {})
     if not isinstance(db, dict):
         raise ValueError("db must be a mapping")
-    if not isinstance(db.get("uri"), str) or not db["uri"].startswith(("mongodb://", "mongodb+srv://")):
+    if not isinstance(db.get("uri"), str) or not db["uri"].startswith("mongodb://"):
         raise ValueError("db.uri must be a MongoDB URI")
     if not isinstance(db.get("database"), str) or not db["database"]:
         raise ValueError("db.database is required")

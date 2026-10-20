@@ -7,8 +7,6 @@ from pymongo.errors import DuplicateKeyError
 
 
 class Store:
-    """Synchronous MongoDB operations run off the asyncio event loop."""
-
     def __init__(self, db, lease_seconds=300):
         self.db = db
         self.lease_seconds = lease_seconds
@@ -63,7 +61,6 @@ class Store:
 
     async def fail(self, job, error, delay, max_retries):
         attempts = job["attempts"] + 1
-        # Transient exhaustion is retained as 'failed', never mistaken for no URLs.
         await self.call(self.db.crawl_queue.update_one,
             {"_id": job["_id"], "owner": self.owner}, {"$set": dict(
                 status="failed" if attempts >= max_retries else "pending",

@@ -1,0 +1,4 @@
+httpx>=0.28
+pymongo>=4.13
+PyYAML>=6
+defusedxml>=0.7

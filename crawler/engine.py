@@ -50,7 +50,6 @@ class Engine:
             urls += fetcher.robots.site_maps() or []
         except (FetchError, SkipPage, httpx.HTTPError, ValueError, OSError) as error:
             log.warning("Robots temporarily unavailable source=%s error=%s", name, error)
-        # Conventional fallback is still sitemap discovery, not HTML traversal.
         if not urls:
             urls = [f'https://{self.sources[name]["domain"]}/sitemap.xml']
         batch = []
@@ -79,8 +78,7 @@ class Engine:
             await self.retry(job, error)
 
     async def retry(self, job, error):
-        delay = max(self.logic["retry_base_seconds"] * 2 ** min(job["attempts"], 10),
-                    getattr(error, "retry_after", 0))
+        delay = max(self.logic["retry_base_seconds"] * 2 ** min(job["attempts"], 10), getattr(error, "retry_after", 0))
         await self.store.fail(job, error, delay, self.logic["max_retries"])
         log.warning("Retry url=%s error=%s", job["url"], error)
 
@@ -136,7 +134,6 @@ class Engine:
                 raise SkipPage("Not HTML")
             raw = file.read()
             html = raw.decode(response.encoding or "utf-8", errors="replace")
-            # Check encoded text too: replacement characters may expand the BSON value.
             if len(html.encode("utf-8")) > self.logic["max_html_bytes"]:
                 raise SkipPage("Decoded HTML exceeds size limit")
             digest = hashlib.sha256(raw).hexdigest()
@@ -263,7 +260,6 @@ class Engine:
             return "stopped"
         finally:
             self.stop.set()
-            # Drain already assigned work before releasing the database-wide lock.
             if active:
                 await asyncio.gather(*active, return_exceptions=True)
             heartbeat.cancel()

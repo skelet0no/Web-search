@@ -3,7 +3,6 @@ from defusedxml.ElementTree import iterparse
 
 
 def entries(stream, max_bytes: int):
-    """Yield (kind, URL, lastmod); parsing memory is bounded by one entry."""
     stream.seek(0)
     compressed = stream.read(2) == b"\x1f\x8b"
     stream.seek(0)
