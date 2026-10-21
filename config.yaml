@@ -2,7 +2,7 @@ db:
   uri: mongodb://mongo:27017
   database: crawler
 logic:
-  target_documents: 1000
+  target_documents: 1000000
   recrawl_interval_days: 7
   request_timeout_seconds: 30
   max_retries: 5

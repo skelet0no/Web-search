@@ -1,6 +1,6 @@
 # Sitemap crawler
 
-Поисковый робот на Python для АиФ, StopGame и Habr. Адреса получает только из sitemap, сохраняет исходный HTML в MongoDB и продолжает работу после остановки. Подробные требования: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Поисковый робот на Python для АиФ, StopGame и Habr. Адреса получает только из sitemap, сохраняет исходный HTML в MongoDB и продолжает работу после остановки.
 
 ## Запуск через Docker Compose
 
