@@ -19,5 +19,17 @@ services:
     volumes:
       - ./config.yaml:/app/config.yaml:ro
     stop_grace_period: 2m
+  corpus:
+    image: web-search-crawler
+    build: .
+    profiles: [analysis]
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint: [python, -m, corpus]
+    command: [extract, /app/config.yaml, --output, /app/docx/runs]
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./docx:/app/docx
 volumes:
   mongo_data:
