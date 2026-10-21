@@ -1,6 +1,3 @@
-"""HTML extraction without fetching live pages or changing original documents."""
-
-import hashlib
 import re
 from importlib.metadata import version
 
@@ -9,8 +6,8 @@ from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 EXTRACTOR_VERSION = "corpus-1.0-bs4-" + version("beautifulsoup4") + "-html.parser"
 SELECTORS = {
     "habr": (".tm-article-body", ".article-formatted-body", "#post-content-body"),
-    "aif": (".article_text", ".article-text", "[itemprop='articleBody']"),
-    "stopgame": (".article-body", ".article__body", ".article_text", "[itemprop='articleBody']"),
+    "aif": (".article_text", ".article-text"),
+    "stopgame": (".article-body", ".article__body", ".article_text"),
 }
 BLOCKS = {"p", "div", "section", "article", "main", "blockquote", "ul", "ol",
           "li", "h1", "h2", "h3", "h4", "h5", "h6", "figure", "figcaption", "table", "tr"}
@@ -25,7 +22,6 @@ def normalize(value):
 
 
 def render_text(root):
-    """Iterative traversal preserves inline spacing and preformatted code."""
     parts = []
     stack = [(root, False)]
     while stack:
@@ -53,7 +49,6 @@ def render_text(root):
             parts.append("\n\n")
         stack.append((node, True))
         stack.extend((child, False) for child in reversed(list(node.children)))
-    # Trim block edges without collapsing indentation inside code blocks.
     text = "".join(parts).replace("\xa0", " ")
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
@@ -95,7 +90,7 @@ def extract_document(raw_html, source):
         node.decompose()
     for node in list(soup.find_all(True)):
         if node.attrs is None:
-            continue  # ancestor was already removed
+            continue
         marker = " ".join([str(node.get("id", "")), " ".join(node.get("class", []))])
         if node.has_attr("hidden") or node.get("aria-hidden") == "true" or NOISE.search(marker):
             node.decompose()
@@ -116,7 +111,6 @@ def extract_document(raw_html, source):
     for tag in list(root.find_all("h1")):
         if normalize(tag.get_text(" ")) == result["title"]:
             tag.decompose()
-    # Head/title are metadata, never article text (including fragment fallback).
     for tag in list(root.find_all(["head", "title"])):
         tag.decompose()
     result["text"] = render_text(root)
@@ -126,5 +120,4 @@ def extract_document(raw_html, source):
         result["warnings"].append("no_text_in_selected_block")
     if "\ufffd" in raw_html:
         result["warnings"].append("replacement_characters_in_saved_html")
-    result["text_hash"] = hashlib.sha256(result["text"].encode("utf-8")).hexdigest()
     return result

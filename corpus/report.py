@@ -1,5 +1,3 @@
-"""Readable reports and HTML/text examples produced during analysis."""
-
 import csv
 import hashlib
 import json
@@ -21,8 +19,8 @@ def write_report(directory, summary):
              f"Состояние: **{summary['state']}**. Режим: **{'выборка' if summary['is_sample'] else 'полный проход выбранного набора'}**.",
              "",
              f"Начало: {summary['started_at']}. Завершение: {summary.get('finished_at', '—')}.", "",
-             ("Диагностическая выборка из работающей базы без общего снимка. Состав базы мог изменяться; "
-              "счётчики доступных документов отражают начало просмотра. Записи MongoDB не изменялись."
+             ("Диагностическая выборка из работающей базы без общего снимка. "
+              "Записи MongoDB не изменялись."
               if summary.get("snapshot_mode") == "live_preview" else
               "Состав зафиксирован блокировкой crawler на время обработки. Исходные документы не изменялись."), "",
              "## Размеры и количество", "",
@@ -52,7 +50,6 @@ def write_report(directory, summary):
 
 
 class Samples:
-    """Keep smallest/largest plus deterministic hashed examples, bounded per source."""
     def __init__(self, per_source):
         self.limit = per_source
         self.groups = {}

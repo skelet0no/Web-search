@@ -1,5 +1,3 @@
-"""Run corpus inspection and extraction with python -m corpus."""
-
 import argparse
 import logging
 from datetime import datetime, timezone

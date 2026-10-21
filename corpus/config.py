@@ -1,5 +1,3 @@
-"""Independent analysis configuration; crawler scheduler settings are not required."""
-
 from pathlib import Path
 
 import yaml

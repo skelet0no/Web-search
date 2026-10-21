@@ -1,5 +1,3 @@
-"""MongoDB persistence and exclusion of concurrent recrawls."""
-
 import threading
 import time
 from contextlib import contextmanager
@@ -22,7 +20,6 @@ class Repository:
 
     @contextmanager
     def frozen(self):
-        """Use the crawler's existing lease protocol, renewing in a separate thread."""
         owner = "corpus-" + str(uuid4())
         stop = threading.Event()
         lost = threading.Event()
@@ -66,7 +63,8 @@ class Repository:
             self.db.state.delete_one({"_id": "runner", "owner": owner})
 
     def documents(self, query, limit, batch_size):
-        cursor = self.db.documents.find(query).sort("_id", 1).batch_size(batch_size)
+        fields = {key: 1 for key in ("url", "source", "raw_html", "content_hash")}
+        cursor = self.db.documents.find(query, fields).sort("_id", 1).batch_size(batch_size)
         if limit:
             cursor = cursor.limit(limit)
         return cursor
@@ -78,8 +76,7 @@ class Repository:
             raise ValueError("run_id already exists; use another ID. Existing runs are immutable.") from None
 
     def save_document(self, record):
-        self.db.corpus_documents.replace_one(
-            {"run_id": record["run_id"], "document_id": record["document_id"]}, record, upsert=True)
+        self.db.corpus_documents.insert_one(record)
 
-    def update_run(self, run_id, **values):
-        self.db.corpus_runs.update_one({"_id": run_id}, {"$set": values})
+    def update_run(self, run):
+        self.db.corpus_runs.update_one({"_id": run["run_id"]}, {"$set": run})
