@@ -1,6 +1,8 @@
 import threading
 import time
-from contextlib import contextmanager
+from collections import deque
+from contextlib import ExitStack, contextmanager
+from itertools import islice
 from uuid import uuid4
 
 from pymongo import MongoClient, ReturnDocument
@@ -68,6 +70,24 @@ class Repository:
         if limit:
             cursor = cursor.limit(limit)
         return cursor
+
+    @contextmanager
+    def sample_documents(self, query, sources, limit, batch_size):
+        with ExitStack() as stack:
+            cursors = deque(iter(stack.enter_context(self.documents(
+                {**query, "source": source}, limit, batch_size))) for source in sources)
+
+            def interleave():
+                while cursors:
+                    cursor = cursors.popleft()
+                    try:
+                        document = next(cursor)
+                    except StopIteration:
+                        continue
+                    cursors.append(cursor)
+                    yield document
+
+            yield islice(interleave(), limit)
 
     def create_run(self, run):
         try:

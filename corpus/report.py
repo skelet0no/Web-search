@@ -41,9 +41,9 @@ def write_report(directory, summary):
     lines += ["", "## Примеры", "",
               "По каждому источнику сохранены самый маленький, самый большой и дополнительные документы, выбранные по хешу ID.",
               "Примеры служат для изучения и не являются репрезентативной оценкой качества.", "",
-              "| Источник | URL | HTML, байт | Текст, байт | HTML / TXT |", "| --- | --- | --- | --- | --- |"]
+              "| Источник | Тип страницы | URL | HTML, байт | Текст, байт | HTML / TXT |", "| --- | --- | --- | --- | --- | --- |"]
     for sample in summary.get("samples", []):
-        lines.append(f"| {cell(sample['source'])} | {cell(sample['url'])} | {sample['raw_utf8_bytes']} | "
+        lines.append(f"| {cell(sample['source'])} | {cell(sample['page_type'])} | {cell(sample['url'])} | {sample['raw_utf8_bytes']} | "
                      f"{sample['text_utf8_bytes']} | [HTML]({sample['html_path']}) / [TXT]({sample['text_path']}) |")
     lines.append("")
     (directory / "report.md").write_text("\n".join(lines), encoding="utf-8")
@@ -80,10 +80,10 @@ class Samples:
                 (directory / text_path).write_text(record["text"], encoding="utf-8")
                 rows.append(dict(document_id=key, source=source, url=record["url"],
                                  raw_utf8_bytes=record["raw_utf8_bytes"], text_utf8_bytes=record["text_utf8_bytes"],
-                                 status=record["status"], html_path=html_path, text_path=text_path))
+                                 status=record["status"], page_type=record["page_type"], html_path=html_path, text_path=text_path))
         with (directory / "samples.csv").open("w", encoding="utf-8", newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=["document_id", "source", "url", "raw_utf8_bytes",
-                                                       "text_utf8_bytes", "status", "html_path", "text_path"])
+                                                       "text_utf8_bytes", "status", "page_type", "html_path", "text_path"])
             writer.writeheader()
             writer.writerows(rows)
         return rows

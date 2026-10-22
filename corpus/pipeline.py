@@ -32,6 +32,7 @@ def run_analysis(repository, config, *, run_id, output, sources=None, limit=None
     sources = sorted(set(sources or known_sources))
     if known_sources and any(s not in known_sources for s in sources):
         raise ValueError("Unknown source (see sources in config)")
+    balanced = limit is not None and len(sources) > 1
     query = {"raw_html": {"$regex": r"\S"},
              "$expr": {"$eq": [{"$type": "$raw_html"}, "string"]}}
     if sources:
@@ -50,7 +51,8 @@ def run_analysis(repository, config, *, run_id, output, sources=None, limit=None
                    snapshot_mode="live_preview" if preview else "crawler_lease",
                    selection=dict(database=config["db"]["database"], collection="documents",
                                   sources=sources, limit=limit, url_pattern=url_pattern,
-                                  order="_id ascending", filter=query))
+                                  order="round-robin by source, _id ascending within source" if balanced else "_id ascending",
+                                  filter=query))
     stats, samples = Statistics(), Samples(samples_per_source)
     with (nullcontext(lambda: None) if preview else repository.frozen()) as check:
         if not preview:
@@ -61,7 +63,8 @@ def run_analysis(repository, config, *, run_id, output, sources=None, limit=None
             repository.create_run(summary)
         try:
             directory.mkdir(parents=True, exist_ok=False)
-            with repository.documents(query, limit, batch_size) as cursor:
+            documents = repository.sample_documents(query, sources, limit, batch_size) if balanced else repository.documents(query, limit, batch_size)
+            with documents as cursor:
                 for original in cursor:
                     if stats.total.count % batch_size == 0:
                         check()
@@ -70,7 +73,7 @@ def run_analysis(repository, config, *, run_id, output, sources=None, limit=None
                         result = extract_document(raw, original.get("source"))
                     except Exception as exc:
                         log.warning("Extraction failed for %s: %s", original["_id"], type(exc).__name__)
-                        result = dict(title=None, text="", status="error", raw_utf8_bytes=len(raw.encode("utf-8")),
+                        result = dict(title=None, text="", status="error", page_type="unknown", raw_utf8_bytes=len(raw.encode("utf-8")),
                                       text_utf8_bytes=0, warnings=[f"extraction_error:{type(exc).__name__}"], features={})
                     record = dict(result, run_id=run_id, document_id=original["_id"],
                                   url=original.get("url", ""), source=original.get("source") or "unknown",
@@ -84,6 +87,10 @@ def run_analysis(repository, config, *, run_id, output, sources=None, limit=None
                         log.info("Processed %s documents", stats.total.count)
             if not preview and stats.total.count != expected:
                 raise RuntimeError("Document count changed during analysis; snapshot is incomplete")
+            if sources and (limit is None or limit >= len(sources)):
+                for source in sources:
+                    if source not in stats.sources:
+                        log.warning("No documents matching the selection for source=%s", source)
             check()
             summary.update(statistics=stats.as_dict(), samples=samples.export(directory),
                            processed_documents=stats.total.count)

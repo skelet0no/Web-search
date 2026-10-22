@@ -13,18 +13,18 @@ logic:
   poll_seconds: 5
   user_agent: SitemapCrawler/0.1
 sources:
-  - name: aif
-    domain: aif.ru
-    sitemap_urls: [https://aif.ru/sitemap.xml]
-    delay_seconds: 2
-    concurrency: 2
+  - name: igromania
+    domain: www.igromania.ru
+    sitemap_urls: [https://www.igromania.ru/sitemap.xml]
+    delay_seconds: 0.1
+    concurrency: 5
   - name: stopgame
     domain: stopgame.ru
     sitemap_urls: [https://stopgame.ru/sitemap.xml]
-    delay_seconds: 2
-    concurrency: 2
-  - name: habr
-    domain: habr.com
-    sitemap_urls: [https://habr.com/sitemap.xml]
-    delay_seconds: 10
-    concurrency: 1
+    delay_seconds: 0.1
+    concurrency: 5
+  - name: vgtimes
+    domain: vgtimes.ru
+    sitemap_urls: [https://vgtimes.ru/sitemap.xml]
+    delay_seconds: 0.1
+    concurrency: 5

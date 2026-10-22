@@ -1,6 +1,6 @@
 # Sitemap crawler
 
-Поисковый робот на Python для АиФ, StopGame и Habr. Адреса получает только из sitemap, сохраняет исходный HTML в MongoDB и продолжает работу после остановки.
+Поисковый робот на Python для Игромании, StopGame и VGTimes. Адреса получает только из sitemap, сохраняет исходный HTML в MongoDB и продолжает работу после остановки.
 
 ## Анализ корпуса для лабораторных работ
 
@@ -8,7 +8,7 @@
 характеристики HTML и примеры в `docx/runs/<run_id>/`.
 
 ```bash
-python -m corpus inspect config.yaml --uri mongodb://127.0.0.1:27017 --source habr --limit 30
+python -m corpus inspect config.yaml --uri mongodb://127.0.0.1:27017 --source vgtimes --limit 30
 ```
 
 Диагностика только читает базу и доступна при работающем crawler. Полный проход

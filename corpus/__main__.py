@@ -28,7 +28,8 @@ def main(argv=None):
         p.add_argument("--run-id", default=None)
         p.add_argument("--source", action="append", dest="sources", help="Повторяется для нескольких источников")
         p.add_argument("--url-pattern", help="Регулярное выражение для отбора URL")
-        p.add_argument("--limit", type=positive, default=100 if command == "inspect" else None)
+        p.add_argument("--limit", type=positive, default=100 if command == "inspect" else None,
+                       help="Общий лимит документов; при нескольких источниках выборка распределяется между ними")
         p.add_argument("--batch-size", type=positive, default=100)
         p.add_argument("--samples-per-source", type=positive, default=5)
         p.add_argument("--output", type=Path, default=Path("docx/runs"))

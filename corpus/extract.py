@@ -1,16 +1,30 @@
+import json
 import re
 from importlib.metadata import version
 
 from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 
-EXTRACTOR_VERSION = "corpus-1.0-bs4-" + version("beautifulsoup4") + "-html.parser"
+EXTRACTOR_VERSION = "corpus-2.0-bs4-" + version("beautifulsoup4") + "-html.parser"
 SELECTORS = {
-    "habr": (".tm-article-body", ".article-formatted-body", "#post-content-body"),
-    "aif": (".article_text", ".article-text"),
-    "stopgame": (".article-body", ".article__body", ".article_text"),
+    "vgtimes": (".news_item .text_block", ".tag_description", ".module_tags"),
+    "igromania": ("[class*='material-content_']", "[class*='TextContent_text']",
+                  "[class*='HeadingPage_infiniteWrap']"),
+    "stopgame": ("#material_content", "[class*='_game-info_']", ".article-body", ".article__body", ".article_text"),
+}
+COLLECTION_SELECTORS = {".tag_description", ".module_tags", "[class*='HeadingPage_infiniteWrap']"}
+NOISE_SELECTORS = {
+    "vgtimes": ".banner_in_news, .tg_ad, .relrel, .news_content_bottom, .author_block",
+    "igromania": "[class*='AdFoxBanner'], [class*='knb-banner'], [class*='PlotWithMaterials'], "
+                 "[class*='CommentsOfArticle'], [class*='CommentsFormOfArticle'], [class*='knb-footer']",
+    "stopgame": "[class*='_comment_'], [class*='_comments_'], [class*='_read-more_']",
+}
+AUTHOR_SELECTORS = {
+    "vgtimes": ".news_item_top a.author",
+    "igromania": "[class*='HeaderOfArticle_head'] [class*='AuthorOfArticle_author']",
+    "stopgame": "[data-mainmaterial-author]",
 }
 BLOCKS = {"p", "div", "section", "article", "main", "blockquote", "ul", "ol",
-          "li", "h1", "h2", "h3", "h4", "h5", "h6", "figure", "figcaption", "table", "tr"}
+          "li", "h1", "h2", "h3", "h4", "h5", "h6", "figure", "figcaption", "table", "tr", "dl", "dt", "dd"}
 NOISE = re.compile(r"(?:^|[-_\s])(?:comments?|replies|sidebar|advert(?:isement)?|ads|"
                    r"related|recommendations?|social|share|sharing|breadcrumbs?|"
                    r"newsletter|subscribe|subscription|promo)(?:$|[-_\s])", re.I)
@@ -19,6 +33,37 @@ FEATURE_TAGS = ("article", "main", "h1", "p", "li", "table", "pre", "code", "img
 
 def normalize(value):
     return re.sub(r"\s+", " ", value).strip()
+
+
+def article_metadata(soup):
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or script.get_text())
+        except (ValueError, TypeError):
+            continue
+        nodes = list(data) if isinstance(data, list) else [data]
+        while nodes:
+            node = nodes.pop(0)
+            if not isinstance(node, dict):
+                continue
+            kind = node.get("@type", [])
+            kinds = [kind] if isinstance(kind, str) else kind if isinstance(kind, list) else []
+            if any(k in {"Article", "NewsArticle", "BlogPosting", "Review"} for k in kinds if isinstance(k, str)):
+                return node
+            graph = node.get("@graph")
+            if isinstance(graph, list):
+                nodes.extend(graph)
+    return {}
+
+
+def metadata_text(value):
+    if isinstance(value, dict):
+        value = value.get("name")
+    if isinstance(value, str):
+        return normalize(value) or None
+    if isinstance(value, list):
+        return ", ".join(name for item in value if (name := metadata_text(item))) or None
+    return None
 
 
 def render_text(root):
@@ -58,7 +103,7 @@ def render_text(root):
 def extract_document(raw_html, source):
     result = dict(title=None, text="", language=None, author=None, published_at=None,
                   raw_utf8_bytes=0, text_utf8_bytes=0, status="unsupported",
-                  extraction_method=None, warnings=[], features={})
+                  extraction_method=None, page_type="unknown", warnings=[], features={})
     if not isinstance(raw_html, str) or not raw_html.strip():
         result["warnings"] = ["missing_or_empty_html"]
         return result
@@ -67,6 +112,7 @@ def extract_document(raw_html, source):
     result["features"] = {tag: bool(soup.find(tag)) for tag in FEATURE_TAGS}
     result["features"]["json_ld"] = bool(soup.find("script", type="application/ld+json"))
     result["features"]["open_graph"] = bool(soup.find("meta", property=re.compile(r"^og:")))
+    structured = article_metadata(soup)
 
     def meta(*names):
         for name in names:
@@ -76,18 +122,25 @@ def extract_document(raw_html, source):
         return None
 
     heading = soup.find("h1")
-    result["title"] = (normalize(heading.get_text(" ")) if heading else None) or meta("og:title") or (
+    result["title"] = (normalize(heading.get_text(" ")) if heading else None) or metadata_text(structured.get("headline")) or meta("og:title") or (
         normalize(soup.title.get_text(" ")) if soup.title else None)
-    result["language"] = (soup.html.get("lang") if soup.html else None) or meta("og:locale")
-    result["author"] = meta("author", "article:author")
-    result["published_at"] = meta("article:published_time", "datePublished", "pubdate")
+    result["language"] = (soup.html.get("lang") if soup.html else None) or metadata_text(structured.get("inLanguage")) or meta("og:locale")
+    result["author"] = meta("author") or metadata_text(structured.get("author")) or meta("article:author")
+    if not result["author"] and source in AUTHOR_SELECTORS:
+        author = soup.select_one(AUTHOR_SELECTORS[source])
+        if author:
+            result["author"] = normalize(author.get_text(" ")) or None
+    result["published_at"] = meta("article:published_time", "datePublished", "pubdate") or metadata_text(structured.get("datePublished"))
     if not result["published_at"]:
-        time_tag = soup.find("time", attrs={"datetime": True})
-        if time_tag and time_tag.get("itemprop") == "datePublished":
-            result["published_at"] = time_tag["datetime"]
+        time_tag = soup.select_one("time[itemprop~='datePublished'][datetime], meta[itemprop~='datePublished'][content]")
+        if time_tag:
+            result["published_at"] = time_tag.get("datetime") or time_tag.get("content")
 
-    for node in list(soup.find_all(["script", "style", "noscript", "template", "nav", "aside", "footer", "form", "iframe"])):
+    for node in list(soup.find_all(["script", "style", "noscript", "template", "nav", "aside", "footer", "form", "iframe", "button", "svg"])):
         node.decompose()
+    if source in NOISE_SELECTORS:
+        for node in soup.select(NOISE_SELECTORS[source]):
+            node.decompose()
     for node in list(soup.find_all(True)):
         if node.attrs is None:
             continue
@@ -99,8 +152,10 @@ def extract_document(raw_html, source):
     for selector in (*SELECTORS.get(source, ()), "[itemprop='articleBody']", "article", "main"):
         candidates = soup.select(selector)
         if candidates:
-            root = max(candidates, key=lambda tag: len(tag.get_text()))
+            root = candidates[0] if selector in SELECTORS.get(source, ()) else max(candidates, key=lambda tag: len(tag.get_text()))
             result["extraction_method"] = selector
+            result["page_type"] = "collection" if selector in COLLECTION_SELECTORS else (
+                "game" if selector == "[class*='_game-info_']" else "article")
             if len(candidates) > 1:
                 result["warnings"].append("multiple_content_blocks_requires_review")
             break
@@ -108,6 +163,12 @@ def extract_document(raw_html, source):
         root = soup.body or soup
         result["extraction_method"] = "visible_text_fallback"
         result["warnings"].append("fallback_requires_review")
+    if result["page_type"] == "collection":
+        result["warnings"].append("collection_page")
+    elif result["page_type"] == "game":
+        result["warnings"].append("game_card")
+        if root.find("p") is None:
+            result["warnings"].append("game_card_without_description")
     for tag in list(root.find_all("h1")):
         if normalize(tag.get_text(" ")) == result["title"]:
             tag.decompose()
