@@ -1,12 +1,14 @@
 FROM debian:bookworm-slim AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake ca-certificates libicu-dev libssl-dev libsasl2-dev \
+    build-essential cmake git ca-certificates libicu-dev libssl-dev libsasl2-dev \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY CMakeLists.txt ./
 COPY cmake ./cmake
 COPY tokenizer ./tokenizer
+COPY text ./text
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/tokenizer \
+    -DLEMMATIZER_BUILD=OFF \
     && cmake --build build --parallel 4 \
     && ctest --test-dir build --output-on-failure \
     && cmake --install build

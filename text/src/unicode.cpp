@@ -1,5 +1,7 @@
-#include "unicode.hpp"
-#include "tokenizer/tokenizer.hpp"
+#include "text/unicode.hpp"
+#include <stdexcept>
+#include <limits>
+#include <unicode/utf8.h>
 #include <unicode/locid.h>
 #include <unicode/normalizer2.h>
 #include <unicode/uchar.h>
@@ -7,8 +9,20 @@
 #include <unicode/uversion.h>
 #include <algorithm>
 
-namespace tokenizer::unicode {
+namespace text {
+void validate_utf8(std::string_view value) {
+    if (value.size() > static_cast<std::size_t>(std::numeric_limits<int32_t>::max()))
+        throw std::invalid_argument("Text exceeds ICU input limit");
+    int32_t offset = 0;
+    while (offset < static_cast<int32_t>(value.size())) {
+        const auto begin = offset;
+        UChar32 cp;
+        U8_NEXT(value.data(), offset, static_cast<int32_t>(value.size()), cp);
+        if (cp < 0) throw std::invalid_argument("Invalid UTF-8 at byte " + std::to_string(begin));
+    }
+}
 std::string normalize(std::string_view token, std::size_t& codepoints) {
+    validate_utf8(token);
     if (std::all_of(token.begin(), token.end(), [](unsigned char c) { return c < 128; })) {
         std::string result(token);
         for (char& c : result) if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
@@ -30,7 +44,11 @@ std::string normalize(std::string_view token, std::size_t& codepoints) {
 }
 }
 
-namespace tokenizer {
+namespace text {
+std::string normalize(std::string_view value) {
+    std::size_t length = 0;
+    return normalize(value, length);
+}
 std::string icu_version() { return U_ICU_VERSION; }
 std::string unicode_version() {
     UVersionInfo version;

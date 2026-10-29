@@ -10,6 +10,4 @@ public:
     explicit InvalidUtf8(std::size_t offset);
 };
 std::vector<Token> tokenize(std::string_view text);
-std::string unicode_version();
-std::string icu_version();
 }

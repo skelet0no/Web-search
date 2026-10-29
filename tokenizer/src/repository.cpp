@@ -1,5 +1,6 @@
 #include "repository.hpp"
 #include "tokenizer/tokenizer.hpp"
+#include "text/unicode.hpp"
 #include <bsoncxx/builder/basic/array.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
 #include <mongocxx/options/find.hpp>
@@ -79,7 +80,7 @@ void Repository::start() {
         kvp("document_id", 1), kvp("field", 1), kvp("part", 1)), unique);
     db_["tokenization_runs"].insert_one(make_document(kvp("_id", options_.run_id),
         kvp("state", "running"), kvp("corpus_run_id", options_.corpus_run), kvp("rules_version", rules_version),
-        kvp("icu_version", icu_version()), kvp("unicode_version", unicode_version()),
+        kvp("icu_version", text::icu_version()), kvp("unicode_version", text::unicode_version()),
         kvp("started_at", now()), kvp("limit", options_.limit), kvp("source", options_.source)));
 }
 

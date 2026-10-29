@@ -1,5 +1,6 @@
 #include "tokenizer/tokenizer.hpp"
 #include "tokenizer/statistics.hpp"
+#include "text/unicode.hpp"
 #include <iostream>
 #include <cstdlib>
 
@@ -38,5 +39,5 @@ int main() {
     stats.total.add(13, spans, .01);
     check(stats.total.tokens == 2 && stats.total.codepoints == 5 && stats.total.bytes == 13, "Statistics mismatch");
     expect(std::string(100000, 'A'), {std::string(100000, 'a')});
-    std::cout << "All tokenizer tests passed (ICU " << tokenizer::icu_version() << ")\n";
+    std::cout << "All tokenizer tests passed (ICU " << text::icu_version() << ")\n";
 }

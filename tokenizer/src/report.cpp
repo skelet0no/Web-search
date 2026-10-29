@@ -1,5 +1,6 @@
 #include "repository.hpp"
 #include "tokenizer/tokenizer.hpp"
+#include "text/unicode.hpp"
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/json.hpp>
 #include <fstream>
@@ -50,12 +51,12 @@ void write_report(const Options& options, const RunResult& result) {
     const auto stats = statistics_document(result);
     auto metadata = make_document(kvp("tokenization_run_id", options.run_id),
         kvp("corpus_run_id", options.corpus_run), kvp("rules_version", rules_version),
-        kvp("icu_version", icu_version()), kvp("unicode_version", unicode_version()),
+        kvp("icu_version", text::icu_version()), kvp("unicode_version", text::unicode_version()),
         kvp("compiler", __VERSION__), kvp("build_type", TOKENIZER_BUILD_TYPE), kvp("statistics", stats.view()));
     json << bsoncxx::to_json(metadata.view(), bsoncxx::ExtendedJsonMode::k_relaxed) << '\n';
     const auto& m = result.statistics.total;
     report << "# Токенизация корпуса\n\nЗапуск: " << options.run_id
-        << ". Правила: " << rules_version << "; ICU " << icu_version() << ".\n\n"
+        << ". Правила: " << rules_version << "; ICU " << text::icu_version() << ".\n\n"
         << "Документов: " << result.statistics.selected << "; успешно: " << result.statistics.successful
         << "; ошибок: " << result.statistics.errors << ".\n\n"
         << "| Показатель | Значение |\n| --- | --- |\n"

@@ -1,5 +1,5 @@
 #include "tokenizer/tokenizer.hpp"
-#include "unicode.hpp"
+#include "text/unicode.hpp"
 #include <limits>
 #include <unicode/utf8.h>
 #include <unicode/uchar.h>
@@ -18,7 +18,7 @@ std::vector<Token> tokenize(std::string_view text) {
     auto emit = [&](int32_t end) {
         if (begin < 0) return;
         std::size_t length = 0;
-        auto normalized = unicode::normalize(text.substr(begin, end - begin), length);
+        auto normalized = text::normalize(text.substr(begin, end - begin), length);
         tokens.push_back({tokens.size(), static_cast<std::size_t>(begin),
                           static_cast<std::size_t>(end), std::move(normalized), length});
         begin = -1;

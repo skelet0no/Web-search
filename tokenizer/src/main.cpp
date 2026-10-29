@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
         const auto start = std::chrono::steady_clock::now();
         mongocxx::instance instance;
         tokenizer::Repository repository(options);
-        repository.start();.
+        repository.start();
         options = repository.options();
         bool owns_directory = false;
         try {
