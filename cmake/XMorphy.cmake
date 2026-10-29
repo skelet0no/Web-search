@@ -5,11 +5,10 @@ set(BOOST_HEADERS_DIR "" CACHE PATH "Directory containing boost/")
 if(NOT XMORPHY_SOURCE_DIR)
     FetchContent_Declare(xmorphy_source
         URL https://codeload.github.com/alesapin/XMorphy/tar.gz/${XMORPHY_COMMIT}
-        URL_HASH SHA256=2e43ce9aed8bcd846506e5d3bc491271c2565751cfd2e7da2f4ceaaeb95964a9)
-    FetchContent_GetProperties(xmorphy_source)
-    if(NOT xmorphy_source_POPULATED)
-        FetchContent_Populate(xmorphy_source)
-    endif()
+        URL_HASH SHA256=2e43ce9aed8bcd846506e5d3bc491271c2565751cfd2e7da2f4ceaaeb95964a9
+        # Download sources without configuring upstream's TensorFlow/Python build.
+        SOURCE_SUBDIR _web_search_download_only)
+    FetchContent_MakeAvailable(xmorphy_source)
     set(XMORPHY_SOURCE_DIR "${xmorphy_source_SOURCE_DIR}")
 endif()
 if(NOT BOOST_HEADERS_DIR)
@@ -21,11 +20,10 @@ endif()
 if(NOT BOOST_HEADERS_DIR)
     FetchContent_Declare(boost_headers
         URL https://archives.boost.io/release/1.85.0/source/boost_1_85_0.tar.bz2
-        URL_HASH SHA256=7009fe1faa1697476bdc7027703a2badb84e849b7b0baad5086b087b971f8617)
-    FetchContent_GetProperties(boost_headers)
-    if(NOT boost_headers_POPULATED)
-        FetchContent_Populate(boost_headers)
-    endif()
+        URL_HASH SHA256=7009fe1faa1697476bdc7027703a2badb84e849b7b0baad5086b087b971f8617
+        # Only headers are needed; do not configure Boost's own build.
+        SOURCE_SUBDIR _web_search_download_only)
+    FetchContent_MakeAvailable(boost_headers)
     set(BOOST_HEADERS_DIR "${boost_headers_SOURCE_DIR}")
 endif()
 # Upstream's top-level build unconditionally enables TensorFlow and Python.

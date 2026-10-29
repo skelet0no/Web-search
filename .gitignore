@@ -7,4 +7,6 @@ __pycache__/
 .env
 docx/runs/
 build/
+build-local/
+cmake-build-debug/
 .deps/

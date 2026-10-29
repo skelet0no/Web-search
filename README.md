@@ -6,6 +6,31 @@
 Лемматизация русских слов также реализована на C++17 (XMorphy + ICU), отдельным
 этапом после токенизации
 
+## Тесты токенизатора на C++
+
+Оба набора в `tokenizer/tests` написаны на C++ и запускаются через CTest:
+
+```bash
+cmake -S . -B build-local -DLEMMATIZER_BUILD=OFF -DTOKENIZER_WITH_MONGO=ON -DBUILD_TESTING=ON
+cmake --build build-local --target tokenizer_tests tokenizer_repository_tests --parallel 4
+docker compose start mongo
+TOKENIZER_TEST_URI='mongodb://127.0.0.1:27017/?serverSelectionTimeoutMS=3000' \
+  ctest --test-dir build-local -R '^tokenizer_' --output-on-failure
+```
+
+`tokenizer_core` проверяет выделение и нормализацию токенов, Unicode, UTF-8,
+байтовые границы и статистику без подключения к БД. `tokenizer_repository`
+запускает собранное приложение и проверяет сохранение токенов и отчётов,
+фильтры, лимиты, выбор корпуса, ошибки документов, разбиение на части,
+повторные идентификаторы и ошибки записи. Для каждого сценария создаётся
+отдельная база `tokenizer_test_<id>` и временный каталог; после выполнения
+они удаляются. Рабочая база `crawler` не изменяется.
+
+Без `TOKENIZER_TEST_URI` интеграционный набор отмечается как пропущенный.
+Путь к бинарнику CTest передаёт автоматически; Python и `TOKENIZER_BINARY`
+для этих тестов не нужны. Интеграционный набор использует POSIX `fork`/`exec`
+и предназначен для Linux/macOS.
+
 ## Анализ корпуса для лабораторных работ
 
 Пакет `corpus` читает документы MongoDB, выделяет текст и сохраняет статистику,
