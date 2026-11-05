@@ -136,3 +136,31 @@ docker compose stop crawler
 docker compose exec mongo mongosh crawler --quiet --eval 'db.crawl_queue.updateMany({status:"failed"},{$set:{status:"pending",attempts:0,next_attempt:0}})'
 docker compose start crawler
 ```
+
+## Закон Ципфа (C++17, PNG)
+
+Модуль `zipf` читает последний запуск лемматизации со статусом `completed`
+в базе `crawler`. Запуски `completed_with_errors`, незавершённые и ошибочные
+не принимаются. MongoDB используется только для чтения; crawler останавливать
+не требуется. Анализируется набор выбранного запуска с его ограничениями
+по источнику и числу документов. Учитываются все части поля `text`, одна
+основная лемма на вхождение. Заголовки исключены, стоп-слова, числа и иностранные
+слова сохранены. Кандидаты альтернативных разборов не суммируются.
+
+Для воспроизведения конкретного анализа:
+
+```bash
+./build-local/zipf --lemmatization-run ID
+```
+
+```bash
+cmake -S . -B build-zipf -DZIPF_BUILD=ON -DLEMMATIZER_BUILD=OFF -DTOKENIZER_WITH_MONGO=OFF
+cmake --build build-zipf --target zipf --parallel 4
+```
+
+Через Docker:
+
+```bash
+docker compose build zipf
+docker compose run --rm zipf
+```

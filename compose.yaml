@@ -59,5 +59,20 @@ services:
     volumes:
       - ./docx:/app/docx
     stop_grace_period: 2m
+  zipf:
+    image: web-search-zipf
+    user: "${ZIPF_UID:-1000}:${ZIPF_GID:-1000}"
+    build:
+      context: .
+      dockerfile: zipf/Dockerfile
+    profiles: [analysis]
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/?serverSelectionTimeoutMS=10000
+    volumes:
+      - ./docx:/app/docx
+    stop_grace_period: 2m
 volumes:
   mongo_data:
