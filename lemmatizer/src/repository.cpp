@@ -129,8 +129,6 @@ void Repository::start() {
     if (!options_.source.empty() && !db_["tokenized_documents"].find_one(selection(false)))
         throw std::invalid_argument("Source absent from input run");
     if (!previous && options_.limit) {
-        // Stream the existing (run, document, field, part) index instead of
-        // grouping a million document IDs into an aggregation's memory.
         mongocxx::options::find documents;
         documents.sort(make_document(kvp("document_id", 1)));
         documents.projection(make_document(kvp("document_id", 1)));
@@ -193,7 +191,6 @@ void Repository::process(Analyzer& analyzer, const std::function<bool()>& interr
     auto it = cursor.begin();
     while (it != cursor.end()) {
         check();
-        // Bound both count and bytes; MongoDB's own batches do not bound this buffer.
         std::vector<Value> batch;
         std::size_t bytes = 0;
         while (it != cursor.end() && batch.size() < static_cast<std::size_t>(options_.batch_size)) {
@@ -262,7 +259,7 @@ void Repository::process(Analyzer& analyzer, const std::function<bool()>& interr
                     const auto result = analyzer.analyze(normalized, lang->second);
                     core_seconds += std::chrono::duration<double>(Clock::now() - analysis_begin).count();
                     auto value = annotation(position, result);
-                    // Exact BSON-array element overhead: type + decimal index + NUL.
+
                     auto size = value.view().length() + 2 + std::to_string(element_index).size();
                     if (payload && payload + size + base("ok").view().length() + 32 > options_.chunk_bytes) {
                         emit();

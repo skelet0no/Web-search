@@ -8,7 +8,6 @@
 #include <mongocxx/database.hpp>
 namespace lemmatizer {
 struct Hooks {
-    // Test seam: after all outputs, before checkpoint; production leaves empty.
     std::function<void()> after_output;
 };
 class Repository {

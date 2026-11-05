@@ -236,7 +236,6 @@ int main(int argc, char** argv) {
             require(f.state() == "failed", "Report error leaves resumable failed run");
         }
         {
-            // Expired running lease simulates a killed process, unlike fail().
             Fixture f(uri, argv[1]); f.add();
             Repository abandoned(f.options); abandoned.start();
             f.db["lemmatization_runs"].update_one({}, make_document(kvp("$set", make_document(

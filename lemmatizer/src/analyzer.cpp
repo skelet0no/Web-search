@@ -35,8 +35,6 @@ Result Analyzer::analyze(std::string_view normalized, std::string_view language)
         return found->second->second;
     }
     ++misses_;
-    // XMorphy's raw count is NOT a calibrated probability. Policy v1 uses a
-    // deterministic lexicographic order and preserves every dictionary lemma.
     std::vector<std::string> candidates;
     for (const auto& analysis : backend_.analyze(normalized)) {
         if (!analysis.dictionary) continue;
