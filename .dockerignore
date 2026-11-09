@@ -8,3 +8,5 @@ config.yaml
 docx/runs
 build
 .deps
+indexes
+build-boolean

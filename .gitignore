@@ -10,3 +10,5 @@ build/
 build-local/
 cmake-build-debug/
 .deps/
+indexes/
+build-boolean/

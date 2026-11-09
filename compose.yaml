@@ -74,5 +74,33 @@ services:
     volumes:
       - ./docx:/app/docx
     stop_grace_period: 2m
+  boolean-index:
+    image: web-search-boolean
+    user: "${BOOLEAN_UID:-1000}:${BOOLEAN_GID:-1000}"
+    build:
+      context: .
+      dockerfile: boolean/Dockerfile
+    profiles: [analysis]
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/?serverSelectionTimeoutMS=10000
+    command: [--help]
+    volumes:
+      - ./indexes:/app/indexes
+    stop_grace_period: 2m
+  boolean-search:
+    image: web-search-boolean
+    user: "${BOOLEAN_UID:-1000}:${BOOLEAN_GID:-1000}"
+    build:
+      context: .
+      dockerfile: boolean/Dockerfile
+    profiles: [analysis]
+    entrypoint: [/opt/web-search/bin/boolean-search, --dictionary, /opt/web-search/share/web-search/dictionary]
+    command: [--help]
+    volumes:
+      - ./indexes:/app/indexes:ro
+    stop_grace_period: 2m
 volumes:
   mongo_data:
