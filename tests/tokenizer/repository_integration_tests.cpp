@@ -168,7 +168,7 @@ int main(int argc, char** argv) {
         }
         {
             Fixture f(uri, binary); f.add();
-            // A regular file cannot be used as the output directory, even as root.
+
             fs::create_directories(f.output); auto blocked = f.output / "blocked";
             { std::ofstream file(blocked); file << "blocked"; }
             f.run("failure", {"--output", blocked.string()}, false);

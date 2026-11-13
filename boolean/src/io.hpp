@@ -4,6 +4,9 @@
 #include <stdexcept>
 #include <string>
 #include <cstdint>
+#include <cmath>
+#include <cstring>
+#include <limits>
 
 namespace boolean_search::io {
 inline constexpr std::uint64_t max_string = 4 * 1024 * 1024;
@@ -31,6 +34,48 @@ inline std::uint64_t get(std::istream& s, unsigned width = 8) {
         n |= std::uint64_t(static_cast<unsigned char>(c)) << (8 * i);
     }
     return n;
+}
+
+
+inline void put_varint(std::ostream& s, std::uint64_t n) {
+    do {
+        const auto payload = static_cast<unsigned char>(n & 127);
+        n >>= 7;
+        s.put(static_cast<char>(payload | (n ? 128 : 0)));
+    } while (n);
+    if (!s) throw std::runtime_error("Index write failed");
+}
+inline std::uint64_t get_varint(std::istream& s, std::uint64_t& bytes) {
+    std::uint64_t n = 0;
+    for (unsigned i = 0; i < 10; ++i) {
+        if (!bytes) throw std::runtime_error("Truncated posting varint");
+        --bytes;
+        const auto c = s.get();
+        if (c == std::char_traits<char>::eof()) throw std::runtime_error("Truncated posting varint");
+        const auto b = static_cast<unsigned char>(c);
+        if (i == 9 && b > 1) throw std::runtime_error("Posting varint overflow");
+        n |= std::uint64_t(b & 127) << (7 * i);
+        if (!(b & 128)) {
+            if (i && !(b & 127)) throw std::runtime_error("Noncanonical posting varint");
+            return n;
+        }
+    }
+    throw std::runtime_error("Posting varint overflow");
+}
+inline void put_double(std::ostream& s, double value) {
+    static_assert(sizeof(double) == 8 && std::numeric_limits<double>::is_iec559,
+                  "Index requires IEEE 754 binary64");
+    if (!std::isfinite(value) || value < 0) throw std::runtime_error("Invalid document norm");
+    std::uint64_t bits;
+    std::memcpy(&bits, &value, sizeof(bits));
+    put(s, bits);
+}
+inline double get_double(std::istream& s) {
+    const auto bits = get(s);
+    double value;
+    std::memcpy(&value, &bits, sizeof(value));
+    if (!std::isfinite(value) || value < 0) throw std::runtime_error("Invalid document norm");
+    return value;
 }
 inline void put_string(std::ostream& s, const std::string& v) {
     if (v.size() > max_string) throw std::runtime_error("Index string exceeds 4 MiB");

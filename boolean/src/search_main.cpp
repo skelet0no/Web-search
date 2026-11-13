@@ -1,11 +1,13 @@
 #include "boolean/query.hpp"
 #include "boolean/normalization.hpp"
+#include "boolean/ranking.hpp"
 #include "app.hpp"
 #include "lemmatizer/analyzer.hpp"
 #include "tokenizer/tokenizer.hpp"
 #include "text/unicode.hpp"
 #include <iostream>
 #include <optional>
+#include <iomanip>
 
 int main(int argc,char** argv) {
     using namespace boolean_search;
@@ -14,6 +16,7 @@ int main(int argc,char** argv) {
         std::filesystem::path path,dictionary=BOOLEAN_DEFAULT_DICTIONARY;
         std::optional<std::string> query;
         bool interactive=false, verify=false, json=false;
+        std::string mode="boolean";
         std::uint64_t limit=20, offset=0;
         for (int i=1;i<argc;++i) {
             const std::string key=argv[i];
@@ -21,10 +24,14 @@ int main(int argc,char** argv) {
                 std::cout << "Usage: boolean-search --index DIR --query 'QUERY' [--limit 20] [--offset 0] [--json]\n"
                     "       boolean-search --index DIR --interactive [--json]\n"
                     "       boolean-search --index DIR --verify\n"
-                    "  [--dictionary DIR]\n"
+                    "  [--dictionary DIR] [--mode boolean|tfidf] (default: boolean)\n"
                     "Operators: uppercase AND OR NOT; priority NOT > AND > OR. Parentheses supported.\n"
                     "Spaces imply AND. All dictionary lemma candidates are matched.\n"
-                    "title and text form one field. No ranking, phrases, wildcards or fuzzy search.\n"
+                    "Boolean mode: title and text form one field, results ordered by document ID.\n"
+                    "TF-IDF mode: free text, any token may match, cosine score descending, then ID ascending.\n"
+                    "TF-IDF has no Boolean operators: AND/OR/NOT are search words, punctuation is tokenized.\n"
+                    "TF-IDF pagination requires offset + limit <= 100000, except --limit 0 (count only).\n"
+                    "No phrase, wildcard or fuzzy search.\n"
                     "Counter-Strike -> counter AND strike; C++ -> c; S.T.A.L.K.E.R. -> s AND t AND a AND l AND k AND e AND r.\n"
                     "Interactive: one query per line, empty lines ignored, EOF exits. MongoDB is not needed.\n";
                 return 0;
@@ -36,6 +43,7 @@ int main(int argc,char** argv) {
             const std::string value=argv[++i];
             if (key=="--index") path=value;
             else if (key=="--dictionary") dictionary=value;
+            else if (key=="--mode") mode=value;
             else if (key=="--query") {
                 if (query) throw std::invalid_argument("Repeated --query");
                 query=value;
@@ -46,6 +54,9 @@ int main(int argc,char** argv) {
         if (path.empty() || unsigned(query.has_value())+unsigned(interactive)+unsigned(verify)!=1)
             throw std::invalid_argument("Specify --index and exactly one of --query, --interactive, --verify");
         if (limit>100000) throw std::invalid_argument("--limit must be at most 100000");
+        if (mode!="boolean" && mode!="tfidf") throw std::invalid_argument("--mode must be boolean or tfidf");
+        if (!verify && mode=="tfidf" && limit && offset>max_ranked_window-limit)
+            throw std::invalid_argument("TF-IDF requires offset + limit <= 100000");
         Index index(path);
         if (verify) { index.verify(app::check); std::cout << "Index verified\n"; return 0; }
         require_compatible(index.metadata());
@@ -56,8 +67,31 @@ int main(int argc,char** argv) {
         const Normalize normalize=[&](const std::string& raw) {
             return normalize_query(raw,analyzer);
         };
+        std::unique_ptr<Ranker> ranker;
+        if (mode=="tfidf") ranker=std::make_unique<Ranker>(index,app::check);
+        std::cout << std::setprecision(17);
         const auto execute=[&](const std::string& text) {
             app::check();
+            if (ranker) {
+                const auto result=ranker->search(text,normalize,static_cast<std::size_t>(limit),offset,app::check);
+                if (json) {
+                    std::cout << "{\"query\":" << json_quote(text) << ",\"mode\":\"tfidf\",\"total\":"
+                              << result.total << ",\"offset\":" << offset << ",\"documents\":[";
+                    bool first=true;
+                    for (const auto& hit:result.documents) {
+                        if (!first) std::cout << ',';
+                        first=false;
+                        std::cout << "{\"id\":" << hit.document << ",\"score\":" << hit.score
+                                  << ",\"document\":" << index.document(hit.document) << '}';
+                    }
+                    std::cout << "]}\n";
+                } else {
+                    std::cout << "Matches: " << result.total << "; offset: " << offset << "; mode: tfidf\n";
+                    for (const auto& hit:result.documents)
+                        std::cout << hit.document << '\t' << hit.score << '\t' << index.document(hit.document) << '\n';
+                }
+                return;
+            }
             const auto result=search(index,text,normalize,static_cast<std::size_t>(limit),offset,app::check);
             if (json) {
                 std::cout << "{\"query\":" << json_quote(text) << ",\"total\":" << result.total << ",\"offset\":" << offset << ",\"documents\":[";

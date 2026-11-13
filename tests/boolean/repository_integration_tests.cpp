@@ -1,5 +1,6 @@
 #include "repository.hpp"
 #include "boolean/query.hpp"
+#include "boolean/ranking.hpp"
 #include "lemmatizer/analysis.hpp"
 #include "tokenizer/tokenizer.hpp"
 #include "text/unicode.hpp"
@@ -62,7 +63,7 @@ struct Fixture {
         for (const auto& t:ts) values.append(make_document(kvp("position",position+static_cast<std::int64_t>(t.position)),kvp("normalized",t.normalized)));
         db["tokenized_documents"].insert_one(make_document(kvp("_id",ref),kvp("tokenization_run_id","tokens"),kvp("corpus_run_id","corpus"),
             kvp("document_id",id),kvp("source","stopgame"),kvp("field",name),kvp("part",part),kvp("status","ok"),kvp("tokens",values.view())));
-        // Deliberately split every annotation into a separate output part.
+
         for (std::size_t i=0;i<std::max<std::size_t>(1,ts.size());++i) {
             array annotations;
             if (i<ts.size()) {
@@ -103,12 +104,26 @@ int main() {
             f.build(); Index index(f.options.output); index.verify();
             require(index.document_count()==2 && index.frequency("игра")==2,"Fields and documents deduplicated");
             require(index.frequency("сталь")==1 && index.frequency("стать")==1,"All lemma candidates indexed");
+            auto games=index.lookup_postings("игра");
+            require(games && games->title_frequency()==1 && games->text_frequency()==2,
+                    "TF must sum across input/output parts and preserve fields");
+            games->next();
+            require(games->title_frequency()==1 && games->text_frequency()==0,"Title-only TF");
+            for (const auto* candidate:{"сталь","стать"}) {
+                auto stream=index.lookup_postings(candidate);
+                require(stream && stream->title_frequency()==0 && stream->text_frequency()==1,
+                        "Each lemma candidate must get one occurrence per token");
+            }
             require(index.metadata().at("lemmatization_run_id")=="lemmas","Input run metadata saved");
             const auto after=f.db["lemmatized_documents"].find_one(make_document(kvp("_id",before->view()["_id"].get_value())));
             require(bsoncxx::to_json(before->view())==bsoncxx::to_json(after->view()),"Source annotations changed");
             rejects([&] { f.build(); },"Existing output overwritten");
             f.db["lemmatized_documents"].drop();
             require(index.frequency("игра")==2,"Search still depends on MongoDB data");
+            const Normalize normalized=[](const std::string&) {
+                return std::vector<std::vector<std::string>>{{"игра"},{"ps5"}};
+            };
+            require(Ranker(index).search("игра ps5",normalized).total==2,"Ranking still depends on MongoDB");
         }
         { Fixture f(uri); f.build(); Index index(f.options.output); index.verify(); require(index.document_count()==0,"Empty input"); }
         {

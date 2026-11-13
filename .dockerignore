@@ -10,3 +10,6 @@ build
 .deps
 indexes
 build-boolean
+build-tests
+.coverage
+htmlcov

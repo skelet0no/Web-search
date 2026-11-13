@@ -49,4 +49,4 @@ target_compile_options(xmorphy_dictionary PRIVATE "SHELL:-include array" "SHELL:
 set(LEMMATIZER_DICTIONARY_DIR "${XMORPHY_SOURCE_DIR}/data/dicts" CACHE PATH "Pinned dictionary directory")
 install(FILES "${LEMMATIZER_DICTIONARY_DIR}/udmaindict.bin" "${LEMMATIZER_DICTIONARY_DIR}/udaffixdict.bin" DESTINATION share/web-search/dictionary)
 install(FILES "${XMORPHY_SOURCE_DIR}/LICENSE" DESTINATION share/web-search/licenses RENAME XMorphy-LICENSE)
-install(FILES "${PROJECT_SOURCE_DIR}/lemmatizer/THIRD_PARTY_NOTICES.md" DESTINATION share/web-search/licenses)
+install(FILES "${PROJECT_SOURCE_DIR}/lemmatizer/NOTICE" DESTINATION share/web-search/licenses)

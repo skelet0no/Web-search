@@ -17,7 +17,7 @@ int main(int argc,char** argv) {
             Builder builder(directory/"index",4096);
             auto a=builder.add_document("{}"); builder.add("игра",a); builder.add("сталь",a); builder.add("еж",a);
             auto b=builder.add_document("{}"); builder.add("стать",b); builder.add("ps5",b);
-            auto c=builder.add_document("{}"); builder.add("игры",c); // Russian morphology disabled by document language.
+            auto c=builder.add_document("{}"); builder.add("игры",c);
             builder.add("абракадабрашка",c); builder.add("2026",c);
             builder.finish({});
         }

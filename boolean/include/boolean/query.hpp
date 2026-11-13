@@ -2,7 +2,7 @@
 #include "index.hpp"
 
 namespace boolean_search {
-// Each token expands to alternative terms (OR); consecutive tokens imply AND.
+
 using Normalize = std::function<std::vector<std::vector<std::string>>(const std::string&)>;
 struct SearchResult {
     std::uint64_t total = 0;

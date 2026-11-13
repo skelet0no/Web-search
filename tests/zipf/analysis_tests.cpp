@@ -5,6 +5,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <unistd.h>
+#include <limits>
+#include "../support.hpp"
 namespace {
 void require(bool value, const char* message) { if (!value) throw std::runtime_error(message); }
 }
@@ -28,6 +30,12 @@ int main() {
         rejected = false;
         try { zipf::analyze({{"a", 0}}); } catch (const std::invalid_argument&) { rejected = true; }
         require(rejected, "Zero frequency accepted");
+        rejected = false;
+        try { zipf::analyze({{"", 1}}); } catch (const std::invalid_argument&) { rejected = true; }
+        require(rejected, "Empty term accepted");
+        rejected = false;
+        try { zipf::analyze({{"a", UINT64_MAX}, {"b", 1}}); } catch (const std::overflow_error&) { rejected = true; }
+        require(rejected, "Total frequency overflow accepted");
         std::filesystem::create_directory(dir);
         zipf::plot(dir / "zipf.png", d);
         auto* png = cairo_image_surface_create_from_png((dir / "zipf.png").c_str());
@@ -41,6 +49,10 @@ int main() {
         std::ifstream csv(dir / "frequencies.csv"); std::string line;
         std::getline(csv, line); std::getline(csv, line);
         require(line.find("1,\"игра\",6,") == 0, "CSV ordering/encoding");
+        const auto escaped=zipf::analyze({{"quote\"term",2},{"pipe|line\nbreak",1}});
+        zipf::report(dir,escaped,"{}","run|id","tokens","corpus",1);
+        require(test_support::read(dir/"frequencies.csv").find("\"quote\"\"term\"")!=std::string::npos,"CSV quote escaping");
+        require(test_support::read(dir/"report.md").find("run\\|id")!=std::string::npos,"Markdown ID escaping");
         std::filesystem::remove_all(dir);
         std::cout << "Zipf tests passed\n";
     } catch (const std::exception& e) {

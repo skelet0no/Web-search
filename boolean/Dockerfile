@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /src
 COPY CMakeLists.txt ./
 COPY cmake ./cmake
+COPY tests ./tests
 COPY text ./text
 COPY tokenizer ./tokenizer
 COPY lemmatizer ./lemmatizer

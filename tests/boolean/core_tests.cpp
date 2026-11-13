@@ -67,7 +67,7 @@ int main() {
         {
             Builder b(f.root/"simple",4096);
             const auto a=b.add_document("{\"title\":\"Игра\"}"), c=b.add_document("{}"), d=b.add_document("{}");
-            b.add_document("{}"); // Empty document belongs to the NOT universe.
+            b.add_document("{}");
             for (auto term:{"игра","ps5","сталь"}) b.add(term,a);
             b.add("игра",a); b.add("игра",c); b.add("xbox",c); b.add("стать",d);
             b.add("café",d); b.add("and",d);
@@ -125,7 +125,16 @@ int main() {
         require(build(f.root/"many",4096)>256,"Fixture must exercise multiple merge levels");
         require(build(f.root/"one",8*1024*1024)==1,"Expected one segment");
         Index many(f.root/"many"), one(f.root/"one"); many.verify(); one.verify();
-        for (const auto* name:{"terms.bin","term_offsets.bin","postings.bin","documents.bin","document_offsets.bin"})
+        for (unsigned t=0;t<term_sets.size();++t) {
+            auto stream=many.lookup_postings("t"+std::to_string(t));
+            for (const auto id:term_sets[t]) {
+                require(stream && stream->value()==id && stream->title_frequency()==0 &&
+                        stream->text_frequency()==3,"Multi-level merge lost term frequencies");
+                stream->next();
+            }
+            require(stream && stream->value()==end_id,"Unexpected merged posting");
+        }
+        for (const auto* name:{"terms.bin","term_offsets.bin","postings.bin","documents.bin","document_offsets.bin","doc_norms.bin"})
             require(file_sha256(f.root/"many"/name)==file_sha256(f.root/"one"/name),"Merge changes index contents");
         for (unsigned i=0;i<120;++i) {
             const auto e=expression(rng,4,term_sets,all);

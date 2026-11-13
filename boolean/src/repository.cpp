@@ -98,12 +98,12 @@ void build_from_mongo(const BuildOptions& o,const std::function<void()>& check) 
     const auto input_hash=fingerprint(run), token_hash=fingerprint(token_run.view()), corpus_hash=fingerprint(corpus_run.view());
     const auto filter=make_document(kvp("lemmatization_run_id",run_id));
     if (db["lemmatized_documents"].count_documents(filter.view())!=expected_parts) throw std::runtime_error("Incomplete lemmatization output");
-    // Build-time supporting index; does not alter the saved corpus or annotations.
+
     db["lemmatized_documents"].create_index(make_document(kvp("lemmatization_run_id",1),kvp("document_id",1),
         kvp("field",1),kvp("input_part",1),kvp("output_part",1)));
     mongocxx::options::find sorted;
     sorted.sort(make_document(kvp("document_id",1),kvp("field",1),kvp("input_part",1),kvp("output_part",1)));
-    sorted.batch_size(1); // BSON records can be up to 4 MiB; keep the cursor buffer bounded.
+    sorted.batch_size(1);
     Builder builder(o.output,o.memory_bytes,check);
     std::string document_key, source, field;
     DocId document=0;
@@ -191,7 +191,7 @@ void build_from_mongo(const BuildOptions& o,const std::function<void()>& check) 
                 if (term.empty() || (candidates && term<=previous) || text::normalize(term)!=term)
                     throw std::runtime_error("Empty, duplicate, unsorted or unnormalized lemma candidate");
                 contains=contains || term==lemma; previous=term; ++candidates;
-                builder.add(term,document);
+                builder.add(term,document,field=="title" ? 1 : 0,field=="text" ? 1 : 0);
             }
             if (!candidates || !contains) throw std::runtime_error("Missing primary lemma in candidates");
             ++input_offset; ++next_position; ++annotations; ++tokens;

@@ -99,7 +99,7 @@ public:
     }
 };
 std::uint64_t estimate(const Index& index,const Node& n) {
-    if (n.kind=='t') return index.frequency(n.term);
+    if (n.kind=='t') return index.document_frequency(n.term);
     if (n.kind=='!') return index.document_count();
     const auto a=estimate(index,*n.a), b=estimate(index,*n.b);
     return n.kind=='&' ? std::min(a,b) : std::min(index.document_count(),a+b);

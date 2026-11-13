@@ -12,3 +12,6 @@ cmake-build-debug/
 .deps/
 indexes/
 build-boolean/
+build-tests/
+.coverage
+htmlcov/

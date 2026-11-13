@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /src
 COPY CMakeLists.txt ./
 COPY cmake ./cmake
+COPY tests ./tests
 COPY tokenizer ./tokenizer
 COPY text ./text
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/tokenizer \
